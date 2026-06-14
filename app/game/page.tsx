@@ -54,15 +54,15 @@ export default function GamePage() {
           }
         } catch { devId = 'dev-user-fallback'; }
         setUserId(devId);
-        const { data } = await sb.from('companies').select('id').eq('owner_id', devId).single();
-        setHasCompany(!!data);
+        const { data: companies } = await sb.from('companies').select('id').eq('owner_id', devId).limit(1);
+        setHasCompany(companies && companies.length > 0);
         setLoading(false);
         return;
       }
 
       setUserId(user.id);
-      const { data } = await sb.from('companies').select('id').eq('owner_id', user.id).single();
-      setHasCompany(!!data);
+      const { data: companies } = await sb.from('companies').select('id').eq('owner_id', user.id).limit(1);
+      setHasCompany(companies && companies.length > 0);
       setLoading(false);
     }
 
