@@ -44,6 +44,18 @@ export default function GamePage() {
         } catch {}
       }
 
+      // Check localStorage first (avoids RLS issues with anon key)
+      const storedCompany = localStorage.getItem('ms_company');
+      if (storedCompany) {
+        try {
+          const parsed = JSON.parse(storedCompany);
+          setUserId(parsed.owner_id ?? 'dev');
+          setHasCompany(true);
+          setLoading(false);
+          return;
+        } catch {}
+      }
+
       if (!user) {
         let devId = '';
         try {
@@ -54,15 +66,13 @@ export default function GamePage() {
           }
         } catch { devId = 'dev-user-fallback'; }
         setUserId(devId);
-        const { data: companies } = await sb.from('companies').select('id').eq('owner_id', devId).limit(1);
-        setHasCompany(companies && companies.length > 0);
+        setHasCompany(false);
         setLoading(false);
         return;
       }
 
       setUserId(user.id);
-      const { data: companies } = await sb.from('companies').select('id').eq('owner_id', user.id).limit(1);
-      setHasCompany(companies && companies.length > 0);
+      setHasCompany(false);
       setLoading(false);
     }
 

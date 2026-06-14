@@ -27,11 +27,14 @@ export default function LoginScreen({ onCreateNew, onRestored }: Props) {
       const data = await r.json();
       if (!r.ok) {
         if (data.error === 'Firma existiert bereits') {
-          // Company exists - just proceed to dashboard
+          try { localStorage.setItem('ms_company', JSON.stringify({ owner_id: ownerId })); } catch {}
           onCreateNew();
           return;
         }
         setError(data.error ?? 'Fehler'); setBusy(false); return;
+      }
+      if (data.company) {
+        try { localStorage.setItem('ms_company', JSON.stringify({ id: data.company.id, owner_id: ownerId })); } catch {}
       }
       onCreateNew();
     } catch { setError('Verbindungsfehler'); setBusy(false); }
