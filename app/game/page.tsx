@@ -33,50 +33,39 @@ export default function GamePage() {
     if (!isSupabaseReady()) { setNoSupabase(true); setLoading(false); return; }
 
     async function init() {
-      const sb = getSupabase();
-
-      let { data: { user } } = await sb.auth.getUser();
-
-      if (!user) {
-        try {
-          const { data } = await (sb.auth as any).signInAnonymously();
-          user = data?.user ?? null;
-        } catch {}
-      }
-
-      // Check localStorage first (avoids RLS issues with anon key)
-      const storedCompany = localStorage.getItem('ms_company');
-      if (storedCompany) {
-        try {
+      try {
+        // Check localStorage first (avoids RLS issues with anon key)
+        const storedCompany = localStorage.getItem('ms_company');
+        if (storedCompany) {
           const parsed = JSON.parse(storedCompany);
           setUserId(parsed.owner_id ?? 'dev');
           setHasCompany(true);
           setLoading(false);
           return;
-        } catch {}
-      }
+        }
+      } catch {}
 
-      if (!user) {
-        let devId = '';
-        try {
-          devId = localStorage.getItem('ms_dev_uid') ?? '';
-          if (!devId) {
-            devId = crypto.randomUUID();
-            localStorage.setItem('ms_dev_uid', devId);
-          }
-        } catch { devId = 'dev-user-fallback'; }
-        setUserId(devId);
-        setHasCompany(false);
-        setLoading(false);
-        return;
-      }
+      try {
+        const sb = getSupabase();
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) { setUserId(user.id); }
+      } catch {}
 
-      setUserId(user.id);
+      let devId = '';
+      try {
+        devId = localStorage.getItem('ms_dev_uid') ?? '';
+        if (!devId) {
+          devId = crypto.randomUUID();
+          localStorage.setItem('ms_dev_uid', devId);
+        }
+      } catch { devId = 'dev-user-fallback'; }
+
+      setUserId(devId);
       setHasCompany(false);
       setLoading(false);
     }
 
-    init();
+    init().catch(() => { setHasCompany(false); setLoading(false); });
   }, []);
 
   if (loading) return <Spinner label="Verbinde…" />;
