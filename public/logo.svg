@@ -1,0 +1,54 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c1230"/>
+      <stop offset="0.35" stop-color="#2e1b6b"/>
+      <stop offset="0.7" stop-color="#6d28d9"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="20" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fef3c7"/>
+      <stop offset="0.5" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop stop-color="#fbbf24" stop-opacity="0.35"/>
+      <stop offset="0.6" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- Gold-Glow -->
+  <rect width="64" height="64" fill="url(#glow)"/>
+  <!-- 4 Säulen aufsteigend -->
+  <rect x="10" y="40" width="9" height="14" rx="2" fill="url(#bar)" opacity="0.55"/>
+  <rect x="22" y="32" width="9" height="22" rx="2" fill="url(#bar)" opacity="0.75"/>
+  <rect x="34" y="22" width="9" height="32" rx="2" fill="url(#bar)" opacity="0.9"/>
+  <rect x="46" y="14" width="9" height="40" rx="2" fill="url(#bar)"/>
+  <!-- Krone auf der höchsten Säule -->
+  <g transform="translate(46,8)">
+    <path d="M0 8 L0 4 L2 2 L2.5 5 L4.5 1 L5 5 L7 2 L9 4 L9 8 Z" fill="url(#gold)" stroke="#92400e" stroke-width="0.3" stroke-linejoin="round"/>
+    <circle cx="4.5" cy="5.5" r="0.9" fill="#fef3c7"/>
+  </g>
+  <!-- Trendlinie durch Säulen-Spitzen -->
+  <polyline points="14.5,40 26.5,32 38.5,22 50.5,14" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.7"/>
+  <!-- Glass-Highlight -->
+  <rect width="64" height="32" fill="url(#glass)" pointer-events="none"/>
+  <!-- Boden-Reflexion -->
+  <rect x="0" y="54" width="64" height="6" fill="url(#floor)" pointer-events="none"/>
+  <!-- Innere Border -->
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1" pointer-events="none"/>
+</svg>
