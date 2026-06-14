@@ -97,6 +97,9 @@ export default function Dashboard({ userId }: { userId: string }) {
   const [world, setWorld] = useState<World | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'buildings' | 'upgrades'>('overview');
   const [toast, setToast] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newSector, setNewSector] = useState<string>('ENERGY');
+  const [creating, setCreating] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -104,25 +107,28 @@ export default function Dashboard({ userId }: { userId: string }) {
   }, []);
 
   const loadData = useCallback(async () => {
-    const [compRes, bldRes, mktRes, invRes, phRes, evRes, wRes] = await Promise.all([
-      sb.from('companies').select('*').eq('owner_id', userId).single(),
-      sb.from('buildings').select('*').eq('company_id', (await sb.from('companies').select('id').eq('owner_id', userId).single()).data?.id ?? ''),
-      sb.from('market').select('*'),
-      sb.from('inventory').select('*'),
-      sb.from('price_history').select('*').order('tick_number', { ascending: false }).limit(50),
-      sb.from('events').select('*').order('tick_number', { ascending: false }).limit(50),
-      sb.from('world').select('*').single(),
-    ]);
-    if (compRes.data) setMyCompany(compRes.data);
-    if (bldRes.data) setBuildings(bldRes.data);
-    if (mktRes.data) setMarket(mktRes.data);
-    if (invRes.data) setInventory(invRes.data);
-    if (phRes.data) setPriceHistory(phRes.data.reverse());
-    if (evRes.data) setEvents(evRes.data);
-    if (wRes.data) setWorld(wRes.data);
-    // Load all companies
-    const { data: allComp } = await sb.from('companies').select('*');
-    if (allComp) setAllCompanies(allComp);
+    try {
+      const [{ data: comps }, { data: mkt }, { data: inv }, { data: ph }, { data: ev }, { data: w }] = await Promise.all([
+        sb.from('companies').select('*').eq('owner_id', userId),
+        sb.from('market').select('*'),
+        sb.from('inventory').select('*'),
+        sb.from('price_history').select('*').order('tick_number', { ascending: false }).limit(50),
+        sb.from('events').select('*').order('tick_number', { ascending: false }).limit(50),
+        sb.from('world').select('*'),
+      ]);
+      if (comps && comps.length > 0) setMyCompany(comps[0]);
+      if (mkt) setMarket(mkt);
+      if (inv) setInventory(inv);
+      if (ph) setPriceHistory(ph.reverse());
+      if (ev) setEvents(ev);
+      if (w && w.length > 0) setWorld(w[0]);
+      if (comps && comps.length > 0) {
+        const { data: blds } = await sb.from('buildings').select('*').eq('company_id', comps[0].id);
+        if (blds) setBuildings(blds);
+      }
+      const { data: allComp } = await sb.from('companies').select('*');
+      if (allComp) setAllCompanies(allComp);
+    } catch (e) { console.error('loadData', e); }
   }, [sb, userId]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -132,7 +138,62 @@ export default function Dashboard({ userId }: { userId: string }) {
     return () => clearInterval(interval);
   }, [loadData, myCompany]);
 
-  if (!myCompany || !world) return <div style={{ minHeight: '100vh', background: '#06070d', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4e5470' }}>Lade…</div>;
+  async function createCompany() {
+    if (!newName.trim()) return;
+    setCreating(true);
+    try {
+      const r = await fetch('/api/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim(), primary_sector: newSector, owner_id: userId }),
+      });
+      const data = await r.json();
+      if (data.company) {
+        try { localStorage.setItem('ms_company', JSON.stringify({ id: data.company.id, owner_id: userId })); } catch {}
+        setMyCompany(data.company);
+      }
+    } catch {}
+    setCreating(false);
+  }
+
+  if (!myCompany) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#06070d', color: '#eef0f6', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 440 }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>🏙 Marktspiel Lite</div>
+            <div style={{ fontSize: 13, color: '#4e5470' }}>Gründe deine Firma und baue gemeinsam mit anderen die Stadt auf</div>
+          </div>
+          <div style={{ background: '#0d0f1a', borderRadius: 20, padding: 32, border: '1px solid #1a1d2e' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Firma gründen</div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>Name</label>
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="z.B. Muster GmbH"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #1f2338', background: '#0a0b14', color: '#eef0f6', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>Branche</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(['ENERGY', 'RAW_MATERIALS', 'INDUSTRY', 'LOGISTICS'] as const).map(s => (
+                  <button key={s} onClick={() => setNewSector(s)}
+                    style={{ padding: '12px 16px', borderRadius: 12, border: `1px solid ${newSector === s ? ['#f59e0b','#84cc16','#6366f1','#06b6d4'][['ENERGY','RAW_MATERIALS','INDUSTRY','LOGISTICS'].indexOf(s)] : '#1f2338'}`, background: newSector === s ? '#ffffff08' : '#0a0b14', color: '#eef0f6', textAlign: 'left', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>{['⚡','⛏','🏭','🚚'][['ENERGY','RAW_MATERIALS','INDUSTRY','LOGISTICS'].indexOf(s)]}</span>
+                    {['Energie','Rohstoffe','Fertigung','Logistik'][['ENERGY','RAW_MATERIALS','INDUSTRY','LOGISTICS'].indexOf(s)]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button onClick={createCompany} disabled={creating}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', fontSize: 16, fontWeight: 700, cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1 }}>
+              {creating ? 'Wird erstellt…' : 'Firma gründen →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!world) return <div style={{ minHeight: '100vh', background: '#06070d', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4e5470' }}>Lade Welt…</div>;
 
   const myInventory = inventory.filter(i => i.company_id === myCompany.id);
   const sector = myCompany.primary_sector as Sector;
