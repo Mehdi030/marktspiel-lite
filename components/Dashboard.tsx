@@ -100,6 +100,7 @@ export default function Dashboard({ userId }: { userId: string }) {
   const [newName, setNewName] = useState('');
   const [newSector, setNewSector] = useState<string>('ENERGY');
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -140,7 +141,7 @@ export default function Dashboard({ userId }: { userId: string }) {
 
   async function createCompany() {
     if (!newName.trim()) return;
-    setCreating(true);
+    setCreating(true); setCreateError('');
     try {
       const r = await fetch('/api/setup', {
         method: 'POST',
@@ -148,11 +149,14 @@ export default function Dashboard({ userId }: { userId: string }) {
         body: JSON.stringify({ name: newName.trim(), primary_sector: newSector, owner_id: userId }),
       });
       const data = await r.json();
+      if (!r.ok) { setCreateError(data.error ?? 'Fehler'); setCreating(false); return; }
       if (data.company) {
         try { localStorage.setItem('ms_company', JSON.stringify({ id: data.company.id, owner_id: userId })); } catch {}
         setMyCompany(data.company);
+        // Trigger fresh load
+        loadData();
       }
-    } catch {}
+    } catch (e) { setCreateError('Verbindungsfehler'); }
     setCreating(false);
   }
 
@@ -183,6 +187,7 @@ export default function Dashboard({ userId }: { userId: string }) {
                 ))}
               </div>
             </div>
+            {createError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{createError}</div>}
             <button onClick={createCompany} disabled={creating}
               style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', fontSize: 16, fontWeight: 700, cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1 }}>
               {creating ? 'Wird erstellt…' : 'Firma gründen →'}
