@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
