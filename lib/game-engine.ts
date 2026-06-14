@@ -3,6 +3,7 @@ import { calculateNewPrice, computeBaseDemand } from './market';
 import type { MarketEntry, Sector, TickResult, Company, TradePayload, BuildPayload, ProductionPriority } from '@/types/game';
 import { SECTORS } from '@/types/game';
 import { DISTRICT_SLOT_CONFIG, MAX_BUILDINGS_PER_COMPANY_PER_DISTRICT, MAX_BUILDINGS_PER_COMPANY_TOTAL, BUILDING_BASE_COST } from './constants';
+import { ensureBotCompanies, runBotActions } from './bots';
 
 const CITY_LEVEL_THRESHOLDS = [0, 5000, 25000, 75000, 200000, 500000, 1000000];
 const CITY_BONUSES: Record<number, { label: string; priceMult: number; outputMult: number; costReduce: number }> = {
@@ -90,6 +91,9 @@ function computeTickEffects(upgrades: Array<{ upgrade_id: string; level: number 
 }
 
 export async function runTick(supabase: SB): Promise<TickResult> {
+  // Ensure bot companies exist for all sectors BEFORE loading data
+  await ensureBotCompanies(supabase);
+
   const [
     { data: worldData },
     { data: marketData },
@@ -374,6 +378,16 @@ export async function runTick(supabase: SB): Promise<TickResult> {
     for (const b of underConstruction) await supabase.from('buildings').update({ construction_ticks_remaining: b.construction_ticks_remaining - 1 }).eq('id', b.id);
   }
 
+  // ── Bot actions before processing player actions ─────────────────────────
+  await runBotActions(supabase, tick_number, cityBonus.costReduce);
+  // Re-fetch actions after bots added theirs
+  {
+    const { data: updatedActions } = await supabase.from('actions_queue').select('*').eq('status', 'pending');
+    if (updatedActions) {
+      actions.splice(0, actions.length, ...updatedActions);
+    }
+  }
+
   // ── Rent ─────────────────────────────────────────────────────────────────
   const districtMap = Object.fromEntries(districts.map((d: { id: string; rent_cost: number }) => [d.id, d]));
   const rentByCompany: Record<string, number> = {};
@@ -403,7 +417,7 @@ export async function runTick(supabase: SB): Promise<TickResult> {
   }
 
   // ── Auto-sell ─────────────────────────────────────────────────────────────
-  for (const company of playerCompanies) {
+  for (const company of companies) {
     const strategy = (company as any).warehouse_strategy as string ?? 'normal';
     const threshold = strategy === 'conservative' ? 80 : strategy === 'normal' ? 50 : strategy === 'aggressive' ? 0 : -1;
     if (threshold < 0) continue;

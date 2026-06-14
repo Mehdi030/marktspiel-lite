@@ -42,15 +42,12 @@ export async function POST(req: Request) {
 
   // Support manual BUILD action from client
   if (body?.action === 'BUILD') {
-    const { default: sb } = await import('@/lib/supabase');
-    const client = (sb as any).getSupabase();
-    // Use service client for admin operations
     await supabase.from('actions_queue').insert({
       company_id: body.company_id,
       type: 'BUILD',
       payload: body.payload,
       tick_number: 0,
-    }).select();
+    });
     return NextResponse.json({ success: true });
   }
 
