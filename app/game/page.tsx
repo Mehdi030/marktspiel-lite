@@ -30,42 +30,34 @@ export default function GamePage() {
   const [noSupabase, setNoSupabase] = useState(false);
 
   useEffect(() => {
+    // Skip Supabase init if user already has a company in localStorage
+    try {
+      const storedCompany = localStorage.getItem('ms_company');
+      if (storedCompany) {
+        const parsed = JSON.parse(storedCompany);
+        setUserId(parsed.owner_id ?? 'dev');
+        setHasCompany(true);
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    // Also skip if no Supabase env vars configured
     if (!isSupabaseReady()) { setNoSupabase(true); setLoading(false); return; }
 
-    async function init() {
-      try {
-        // Check localStorage first (avoids RLS issues with anon key)
-        const storedCompany = localStorage.getItem('ms_company');
-        if (storedCompany) {
-          const parsed = JSON.parse(storedCompany);
-          setUserId(parsed.owner_id ?? 'dev');
-          setHasCompany(true);
-          setLoading(false);
-          return;
-        }
-      } catch {}
+    // Dev fallback: use localStorage ID, show LoginScreen immediately
+    let devId = '';
+    try {
+      devId = localStorage.getItem('ms_dev_uid') ?? '';
+      if (!devId) {
+        devId = crypto.randomUUID();
+        localStorage.setItem('ms_dev_uid', devId);
+      }
+    } catch { devId = 'dev-user-fallback'; }
 
-      try {
-        const sb = getSupabase();
-        const { data: { user } } = await sb.auth.getUser();
-        if (user) { setUserId(user.id); }
-      } catch {}
-
-      let devId = '';
-      try {
-        devId = localStorage.getItem('ms_dev_uid') ?? '';
-        if (!devId) {
-          devId = crypto.randomUUID();
-          localStorage.setItem('ms_dev_uid', devId);
-        }
-      } catch { devId = 'dev-user-fallback'; }
-
-      setUserId(devId);
-      setHasCompany(false);
-      setLoading(false);
-    }
-
-    init().catch(() => { setHasCompany(false); setLoading(false); });
+    setUserId(devId);
+    setHasCompany(false);
+    setLoading(false);
   }, []);
 
   if (loading) return <Spinner label="Verbinde…" />;
